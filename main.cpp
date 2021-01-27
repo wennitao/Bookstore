@@ -31,6 +31,7 @@ void init () {
     fstream in ;
     in.open ("users.dat", ios::in | ios::binary) ;
     if (!in.is_open()) {
+        //printf("start init\n") ;
         fstream out ;
         out.open ("users.dat", ios::out | ios::binary) ;
         out.close () ;
@@ -571,12 +572,14 @@ void runCommands () {
         }
 
         //users.print() ;
+        keywords.print() ;
     }
 }
 
 int main() {
     init () ;
     //users.print() ;
+
     runCommands () ;
     return 0 ;
 }

@@ -35,7 +35,7 @@ private:
 
     char file_name[100] ;
     int root = -1, node_cnt = 0 ;
-    const int node_size = sizeof (node) ;
+    const int node_size = sizeof (node), offset = 2 * sizeof (int) ;
 
 public:
     BPlusTree (const char *file) {
@@ -43,7 +43,12 @@ public:
         fstream in (file, ios::in | ios::binary) ;
         if (!in.is_open()) {
             fstream out (file, ios::out | ios::binary) ;
+            out.write (reinterpret_cast<char *>(&root), sizeof root) ;
+            out.write (reinterpret_cast<char *>(&node_cnt), sizeof node_cnt) ;
             out.close() ;
+        } else {
+            in.read (reinterpret_cast<char *>(&root), sizeof root) ;
+            in.read (reinterpret_cast<char *>(&node_cnt), sizeof node_cnt) ;
         }
         in.close() ;
     }
@@ -67,16 +72,10 @@ public:
         memset (tmp.str, 0, sizeof tmp.str); tmp.pos = -1 ;
     }
 
-    /*void update (pair<int, int> pos, const data &x) {
-        node cur = disk_read (pos.first) ;
-        cur.key[pos.second] = x ;
-        disk_write (pos.first, cur) ;
-    }*/
-
     node disk_read (int pos) {
         fstream in ;
         in.open (file_name, ios::in | ios::binary) ;
-        in.seekg (pos, ios::beg) ;
+        in.seekg (pos + offset, ios::beg) ;
         node cur ;
         in.read (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
         in.close() ;
@@ -86,13 +85,22 @@ public:
     void disk_write (int pos, node &x) {
         fstream out ;
         out.open (file_name, ios::in | ios::out | ios::binary) ;
-        out.seekp (pos, ios::beg) ;
+        out.seekp (pos + offset, ios::beg) ;
         out.write (reinterpret_cast<char *>(&x), sizeof (x)) ;
+        out.close() ;
+    }
+
+    void update_root () {
+        fstream out (file_name, ios::in | ios::out | ios::binary) ;
+        out.seekp (0, ios::beg) ;
+        out.write (reinterpret_cast<char *>(&root), sizeof root) ;
+        out.write (reinterpret_cast<char *>(&node_cnt), sizeof node_cnt) ;
         out.close() ;
     }
 
     pair<int, int> find (int v, const data &x) { //find node == x
         //printf("v:%d\n", v) ;
+        if  (v == -1) return make_pair (-1, -1) ;
         node cur = disk_read (v) ;
         int pos = 0 ;
         for (; pos < cur.keyCnt && cur.key[pos] < x; pos ++) ;
@@ -107,6 +115,7 @@ public:
 
     void find (int v, const data &x, vector<int> &res) { //find node == x
         //printf("v:%d\n", v) ;
+        if (v == -1) return ;
         node cur = disk_read (v) ;
         int pos = 0 ;
         for (; pos < cur.keyCnt && cur.key[pos] < x; pos ++) ;
@@ -224,6 +233,7 @@ public:
                 disk_write (cur_pos, cur); disk_write (nxt_pos, nxt) ;
             }
         }
+        update_root() ;
     }
 
     void erase_par (int v) {
@@ -380,6 +390,7 @@ public:
                 }
             }
         }
+        update_root() ;
     }
 } ;
 
