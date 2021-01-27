@@ -27,6 +27,7 @@ int cur_book_pos ;
 
 //first-time launch init
 void init () {
+    //users init
     fstream in ;
     in.open ("users.dat", ios::in | ios::binary) ;
     if (!in.is_open()) {
@@ -46,9 +47,20 @@ void init () {
     cur_status.push (make_pair (not_logged_in, book())) ;
     cur_st = make_pair (not_logged_in, book()) ;
     in.close() ;
+
+    //books init
     in.open ("books.dat", ios::in | ios::binary) ;
     if (!in.is_open()) {
         fstream out ("books.dat", ios::out | ios::binary) ;
+        out.close() ;
+    }
+
+    //finance init
+    in.open ("finance.dat", ios::in | ios::binary) ;
+    if (!in.is_open()) {
+        fstream out ("finance.dat", ios::out | ios::binary) ;
+        int cnt = 0 ;
+        out.write (reinterpret_cast<char *>(&cnt), sizeof cnt) ;
         out.close() ;
     }
 }
@@ -234,6 +246,11 @@ void modify (const char *op_str) {
 
     if (strcmp (op, "ISBN") == 0) {
         char ISBN[30] ;
+        strcpy (ISBN, content.c_str()) ;
+        vector<int> pos ;
+        books.find (data (ISBN, 0), pos) ;
+        if (!pos.empty()) throw "ISBN already exists" ;
+
         cur_book.getISBN (ISBN) ;
         books.erase (data (ISBN, cur_book_pos)) ;
         strcpy (ISBN, content.c_str()) ;
@@ -296,12 +313,15 @@ void modify (const char *op_str) {
     book_write (cur_book_pos, cur_book) ;
 }
 
+void add_finance_log (double p) ;
 void import_book (int quantity, double cost_price) {
     if (cur_st.first.getPrivilege() < 3) throw "no enough privilege" ;
     book &cur_book = cur_st.second ;
     if (cur_book.empty()) throw "book not selected" ;
-    cur_book.import (quantity, cost_price) ;
+    cur_book.import (quantity) ;
     book_write (cur_book_pos, cur_book) ;
+    
+    add_finance_log (-cost_price) ;
 }
 
 void show (const char *op_str) {
@@ -352,11 +372,42 @@ void show (const char *op_str) {
     in.close() ;
 }
 
+
+//finance commands
+const char finance_path[50] = "finance.dat" ;
+
+void print_finance_log (int cnt) {
+    fstream in (finance_path, ios::in | ios::binary) ;
+    in.seekg (0, ios::beg) ;
+    int log_cnt ;
+    in.read (reinterpret_cast<char *>(&log_cnt), sizeof log_cnt) ;
+    double all_pos = 0, all_neg = 0 ;
+    for (int i = max (0, log_cnt - cnt); i < log_cnt; i ++) {
+        double p ;
+        in.seekg (sizeof (log_cnt) + i * sizeof (p)) ;
+        in.read (reinterpret_cast<char *>(&p), sizeof p) ;
+        if (p > 0) all_pos += p ;
+        else all_neg += fabs (p) ;
+    }
+    printf("+ %.2f - %.2f\n", all_pos, all_neg) ;
+}
+
+void add_finance_log (double p) {
+    fstream out (finance_path, ios::in | ios::out | ios::binary) ;
+    out.seekp (0, ios::end) ;
+    out.write (reinterpret_cast<char *>(&p), sizeof p) ;
+    out.seekg (0, ios::beg) ;
+    int cnt ;
+    out.read (reinterpret_cast<char *>(&cnt), sizeof cnt) ;
+    cnt ++ ;
+    out.seekp (0, ios::beg) ;
+    out.write (reinterpret_cast<char *>(&cnt), sizeof cnt) ;
+    out.close() ;
+}
+
 void show_finance (int cnt) {
     if (cur_st.first.getPrivilege() < 7) throw "no enough privilege" ;
-    book &cur_book = cur_st.second ;
-    if (cur_book.empty()) throw "book not selected" ;
-    cur_book.show_finance (cnt) ;
+    print_finance_log (cnt) ;
 }
 
 void buy (const char *ISBN, int quantity) {
@@ -366,6 +417,8 @@ void buy (const char *ISBN, int quantity) {
     book cur = book_read (pos[0]) ;
     cur.buy (quantity) ;
     book_write (pos[0], cur) ;
+
+    add_finance_log (cur.getPrice() * quantity) ;
 }
 
 void runCommands () {
@@ -467,30 +520,42 @@ void runCommands () {
             if (cnt != 3) {
                 printf("Invalid\n"); continue ;
             }
-            int quantity = read_integer (tmp[1]); double cost_price = read_double (tmp[2]) ;
-            import_book (quantity, cost_price) ;
-        } else if (strcmp (op, "show") == 0) {
-            if (cnt == 1) show ("") ;
-            else if (cnt == 2) {
-                if (tmp[1][0] == 'f') show_finance (-1) ;
-                else show (tmp[1]) ;
+            try {
+                int quantity = read_integer (tmp[1]); double cost_price = read_double (tmp[2]) ;
+                import_book (quantity, cost_price) ;
+            } catch (...) {
+                printf("Invalid\n"); continue ;
             }
-            else {
-                if (cnt == 3) {
-                    if (tmp[1][0] != 'f') {
-                        printf("Invalid\n"); continue ;
-                    } else {
-                        show_finance (read_integer (tmp[2])) ;
-                    }
-                } else {
-                    printf("Invalid\n"); continue ;
+        } else if (strcmp (op, "show") == 0) {
+            try {
+                if (cnt == 1) show ("") ;
+                else if (cnt == 2) {
+                    if (tmp[1][0] == 'f') show_finance (2e9) ;
+                    else show (tmp[1]) ;
                 }
+                else {
+                    if (cnt == 3) {
+                        if (tmp[1][0] != 'f') {
+                            printf("Invalid\n"); continue ;
+                        } else {
+                            show_finance (read_integer (tmp[2])) ;
+                        }
+                    } else {
+                        printf("Invalid\n"); continue ;
+                    }
+                }
+            } catch (...) {
+                printf("Invalid\n"); continue ;
             }
         } else if (strcmp (op, "buy") == 0) {
             if (cnt != 3) {
                 printf("Invalid\n"); continue ;
             }
-            buy (tmp[1], read_integer (tmp[2])) ;
+            try {
+                buy (tmp[1], read_integer (tmp[2])) ;
+            } catch (...) {
+                printf("Invalid\n"); continue ;
+            }
         } else if (strcmp (op, "exit") == 0) {
             if (cnt != 1) {
                 printf("Invalid\n"); continue ;

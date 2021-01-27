@@ -12,9 +12,8 @@ class book {
     friend ostream& operator << (ostream &out, const book &obj) ;
 private:
     char ISBN[25], name[65], author[65], keyword[70][70] ;
-    int keyword_cnt, quantity, log_cnt ;
+    int keyword_cnt, quantity ;
     double price ;
-    double finance_log[110] ;
 
 public:
     book () {
@@ -22,14 +21,14 @@ public:
         memset (name, 0, sizeof name) ;
         memset (author, 0, sizeof author) ;
         memset (keyword, 0, sizeof keyword) ;
-        keyword_cnt = quantity = price = log_cnt = 0 ;
+        keyword_cnt = quantity = price = 0 ;
     }
     book (const char *_ISBN) {
         memset (ISBN, 0, sizeof ISBN) ;
         memset (name, 0, sizeof name) ;
         memset (author, 0, sizeof author) ;
         memset (keyword, 0, sizeof keyword) ;
-        keyword_cnt = quantity = price = log_cnt = 0 ;
+        keyword_cnt = quantity = price = 0 ;
         strcpy (ISBN, _ISBN) ;
     }
 
@@ -39,8 +38,7 @@ public:
         strcpy (author, _book.author) ;
         for (int i = 0; i < _book.keyword_cnt; i ++)
             strcpy (keyword[i], _book.keyword[i]) ;
-        keyword_cnt = _book.keyword_cnt; quantity = _book.quantity; price = _book.price; log_cnt = _book.log_cnt ;
-        for (int i = 0; i < _book.log_cnt; i ++) finance_log[i] = _book.finance_log[i] ;
+        keyword_cnt = _book.keyword_cnt; quantity = _book.quantity; price = _book.price ;
     }
 
     book& operator = (const book &_book) {
@@ -50,8 +48,7 @@ public:
         strcpy (author, _book.author) ;
         for (int i = 0; i < _book.keyword_cnt; i ++)
             strcpy (keyword[i], _book.keyword[i]) ;
-        keyword_cnt = _book.keyword_cnt; quantity = _book.quantity; price = _book.price; log_cnt = _book.log_cnt ;
-        for (int i = 0; i < _book.log_cnt; i ++) finance_log[i] = _book.finance_log[i] ;
+        keyword_cnt = _book.keyword_cnt; quantity = _book.quantity; price = _book.price ;
         return *this ;
     }
 
@@ -73,6 +70,9 @@ public:
     }
     void getKeyword (int id, char *_keyword) {
         strcpy (_keyword, keyword[id]) ;
+    }
+    double getPrice () const {
+        return price ;
     }
 
     bool empty () {
@@ -104,31 +104,14 @@ public:
         price = p ;
     }
 
-    void import (int q, double cost_price) {
+    void import (int q) {
         quantity += q ;
-        finance_log[log_cnt ++] = -cost_price ;
-    }
-
-    void print_finance (double p) {
-        if (p > 0) printf("+ ") ;
-        else printf("- ") ;
-        printf("%.2f ", p) ;
-    }
-
-    void show_finance (int cnt) {
-        if (cnt == -1) {
-            for (int i = 0; i < log_cnt; i ++) print_finance (finance_log[i]) ;
-        } else {
-            for (int i = max (0, log_cnt - cnt); i < log_cnt; i ++)
-                print_finance (finance_log[i]) ;
-        }
-        printf("\n") ;
     }
 
     void buy (int q) {
-        if (q > quantity) throw "no enough books" ;
+        if (quantity < q) throw "no enough books" ;
         quantity -= q ;
-        finance_log[log_cnt ++] = price * q ;
+        printf("%.2f\n", price * q) ;
     }
 } ;
 
