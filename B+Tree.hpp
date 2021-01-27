@@ -118,8 +118,11 @@ public:
         } else {
             if (pos == cur.keyCnt || strcmp (x.str, cur.key[pos].str) < 0) find (cur.son[pos], x, res) ;
             else {
+                vector<int> tmp ;
+                find (cur.son[pos], x, tmp) ;
+                for (int i = 0; i < tmp.size(); i ++) res.push_back (tmp[i]) ;
                 for (; pos < cur.keyCnt && strcmp (cur.key[pos].str, x.str) == 0; pos ++) {
-                    vector<int> tmp ;
+                    tmp.clear() ;
                     find (cur.son[pos + 1], x, tmp) ;
                     for (int i = 0; i < tmp.size(); i ++) res.push_back (tmp[i]) ;
                 }

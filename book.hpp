@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstdio>
 #include <cstring>
+#include <iomanip>
 
 using namespace std;
 
@@ -54,8 +55,24 @@ public:
         return *this ;
     }
 
+    bool operator < (const book &_book) const {
+        return strcmp (ISBN, _book.ISBN) < 0 ;
+    }
+
     void getISBN (char *_ISBN) {
         strcpy (_ISBN, ISBN) ;
+    }
+    void getName (char *_name) {
+        strcpy (_name, name) ;
+    }
+    void getAuthor (char *_author) {
+        strcpy (_author, author) ;
+    }
+    int getKeywordCount () const {
+        return keyword_cnt ;
+    }
+    void getKeyword (int id, char *_keyword) {
+        strcpy (_keyword, keyword[id]) ;
     }
 
     bool empty () {
@@ -74,31 +91,52 @@ public:
         strcpy (author, _author) ;
     }
 
-    void modify_keyword (const char *keywords) {
-        cout << keywords << endl ;
+    void clear_keyword () {
+        for (int i = 0; i < keyword_cnt; i ++) memset (keyword[i], 0, sizeof keyword[i]) ;
         keyword_cnt = 0 ;
-        char tmp[70] ;
-        int cur = 0 ;
-        while (1) {
-            int cur_word = 0 ;
-            for (; keywords[cur] && keywords[cur] != '|'; cur ++, cur_word ++)
-                tmp[cur_word] = keywords[cur] ;
-            tmp[cur_word ++] = '\0' ;
-            strcpy (keyword[keyword_cnt ++], tmp) ;
-            if (!keywords[cur ++]) break ;
-        }
+    }
+
+    void add_keyword (const char *_keyword) {
+        strcpy (keyword[keyword_cnt ++], _keyword) ;
     }
     
     void modify_price (const double p) {
         price = p ;
     }
 
+    void import (int q, double cost_price) {
+        quantity += q ;
+        finance_log[log_cnt ++] = -cost_price ;
+    }
+
+    void print_finance (double p) {
+        if (p > 0) printf("+ ") ;
+        else printf("- ") ;
+        printf("%.2f ", p) ;
+    }
+
+    void show_finance (int cnt) {
+        if (cnt == -1) {
+            for (int i = 0; i < log_cnt; i ++) print_finance (finance_log[i]) ;
+        } else {
+            for (int i = max (0, log_cnt - cnt); i < log_cnt; i ++)
+                print_finance (finance_log[i]) ;
+        }
+        printf("\n") ;
+    }
+
+    void buy (int q) {
+        if (q > quantity) throw "no enough books" ;
+        quantity -= q ;
+        finance_log[log_cnt ++] = price * q ;
+    }
 } ;
 
 ostream& operator << (ostream& out, const book &obj) {
-    out << "ISBN:" << obj.ISBN << " name:" << obj.name << " author:" << obj.author << " keywords:" ;
-    for (int i = 0; i < obj.keyword_cnt; i ++) out << obj.keyword[i] << " " ;
-    out << "price:" << obj.price << " quantity:" << obj.quantity ;
+    out << obj.ISBN << "\t" << obj.name << "\t" << obj.author << "\t" ;
+    for (int i = 0; i < obj.keyword_cnt - 1; i ++) out << obj.keyword[i] << "|" ;
+    out << obj.keyword[obj.keyword_cnt - 1] << "\t" ;
+    out << fixed << setprecision (2) << obj.price << "\t" << obj.quantity ;
     return out ;
 }
 

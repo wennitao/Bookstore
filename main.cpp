@@ -14,12 +14,16 @@ using namespace std;
 
 BPlusTree users ("users_B+Tree.dat") ;
 BPlusTree books ("books_B+Tree.dat") ;
+BPlusTree names ("book_name.dat") ;
+BPlusTree authors ("book_author.dat") ;
+BPlusTree keywords ("book_keyword.dat") ;
 
 user root = user ("root", "root", "sjtu", 7) ;
 user not_logged_in = user ("not_logged_in", "not_logged_in", "not_logged_in", 0) ;
 
 stack<pair<user, book> > cur_status ;
 pair<user, book> cur_st ;
+int cur_book_pos ;
 
 //first-time launch init
 void init () {
@@ -97,6 +101,12 @@ void login (const char *user_id, const char *passwd) {
 void logout () {
     if (cur_st.first.getPrivilege () < 1) throw "Can not logout" ;
     cur_status.pop(); cur_st = cur_status.top() ;
+    vector<int> pos ;
+    char ISBN[30] ;
+    cur_st.second.getISBN (ISBN) ;
+    books.find (data (ISBN, 0), pos) ;
+    if (pos.empty()) cur_book_pos = -1 ;
+    else cur_book_pos = pos[0] ;
 }
 
 void addUser (const char *user_id, const char *passwd, const int privilege, const char *name) {
@@ -150,7 +160,6 @@ void updatePasswd (const char *user_id, const char *old_passwd, const char *new_
 
 //book commands
 const char book_path[50] = "books.dat" ;
-int cur_book_pos ;
 
 book book_read (int pos) {
     fstream in (book_path, ios::in | ios::binary) ;
@@ -175,6 +184,19 @@ void book_write (int pos, book &cur) {
     out.close() ;
 }
 
+int read_integer (const char *num) {
+    int x = 0, len = strlen (num) ;
+    for (int i = 0; i < len; i ++) x = x * 10 + num[i] - '0' ;
+    return x ;
+}
+
+double read_double (const char *num) {
+    double p = 0, pdot = 0, now = 0.1; int i = 0, len = strlen (num);
+    for (; i < len && num[i] != '.' && num[i]; i ++) p = p * 10 + num[i] - '0' ;
+    for (i ++; i < len && num[i]; i ++) pdot += now * (num[i] - '0'), now *= 0.1 ;
+    return p + pdot ;
+}
+
 void select (const char *ISBN) {
     if (cur_st.first.getPrivilege() < 3) throw "no enough privilege" ;
 
@@ -192,11 +214,12 @@ void select (const char *ISBN) {
     }
     cur_st.second = cur; cur_status.top() = cur_st ;
 
-    cout << cur << endl ;
+    //cout << cur << endl ;
+    //books.print() ;
 }
 
 void modify (const char *op_str) {
-    cout << op_str << endl ;
+    //cout << op_str << endl ;
     if (cur_st.first.getPrivilege() < 3) throw "no enough privilege" ;
     book &cur_book = cur_st.second ;
     if (cur_book.empty()) throw "book not selected" ;
@@ -210,28 +233,139 @@ void modify (const char *op_str) {
     for (i ++; i < len; i ++) content += op_str[i] ;
 
     if (strcmp (op, "ISBN") == 0) {
-        char tmp[30] ;
-        cur_book.getISBN (tmp) ;
-        books.erase (data (tmp, cur_book_pos)) ;
-        cur_book.modify_ISBN (content.c_str()) ;
-        books.insert (data (content.c_str(), cur_book_pos)) ;
+        char ISBN[30] ;
+        cur_book.getISBN (ISBN) ;
+        books.erase (data (ISBN, cur_book_pos)) ;
+        strcpy (ISBN, content.c_str()) ;
+        cur_book.modify_ISBN (ISBN) ;
+        books.insert (data (ISBN, cur_book_pos)) ;
+
+        //books.print() ;
     } else if (strcmp (op, "name") == 0) {
-        cur_book.modify_name (content.substr (1, content.length() - 2).c_str()) ;
+        char name[70] ;
+        cur_book.getName (name) ;
+        if (strlen (name)) {
+            names.erase (data (name, cur_book_pos)) ;
+        }
+        strcpy (name, content.substr (1, content.length() - 2).c_str()) ;
+        cur_book.modify_name (name) ;
+        names.insert (data (name, cur_book_pos)) ;
+
+        //names.print() ;
     } else if (strcmp (op, "author") == 0) {
-        cur_book.modify_author (content.substr (1, content.length() - 2).c_str()) ;
+        char author[70] ;
+        cur_book.getAuthor (author) ;
+        if (strlen (author)) {
+            authors.erase (data (author, cur_book_pos)) ;
+        }
+        strcpy (author, content.substr (1, content.length() - 2).c_str()) ;
+        cur_book.modify_author (author) ;
+        authors.insert (data (author, cur_book_pos)) ;
+
+        //authors.print() ;
     } else if (strcmp (op, "keyword") == 0) {
-        cur_book.modify_keyword (content.substr (1, content.length() - 2).c_str()) ;
+        int cnt = cur_book.getKeywordCount() ;
+        char keyword[70], tmp[70] ;
+        for (int i = 0; i < cnt; i ++) {
+            cur_book.getKeyword (i, tmp) ;
+            keywords.erase (data (tmp, cur_book_pos)) ;
+        }
+        cur_book.clear_keyword() ;
+
+        strcpy (keyword, content.substr (1, content.length() - 2).c_str()) ;
+        int cur = 0 ;
+        while (1) {
+            int cur_word = 0 ;
+            for (; keyword[cur] && keyword[cur] != '|'; cur ++, cur_word ++)
+                tmp[cur_word] = keyword[cur] ;
+            tmp[cur_word ++] = '\0' ;
+            cur_book.add_keyword (tmp) ;
+            keywords.insert (data (tmp, cur_book_pos)) ;
+            if (!keyword[cur ++]) break ;
+        }
+
+        //keywords.print() ;
     } else if (strcmp (op, "price") == 0) {
-        double p = 0, pdot = 0, now = 0.1; int i = 0 ;
-        for (; i < content.length() && content[i] != '.' && content[i]; i ++) p = p * 10 + content[i] - '0' ;
-        for (i ++; i < content.length() && content[i]; i ++) pdot += now * (content[i] - '0'), now *= 0.1 ;
-        cur_book.modify_price (p + pdot) ;
+        double price = read_double (content.c_str()) ;
+        cur_book.modify_price (price) ;
     } else {
         throw "wrong format" ;
     }
 
-    cout << cur_book << endl ;
+    //cout << cur_book << endl ;
     book_write (cur_book_pos, cur_book) ;
+}
+
+void import_book (int quantity, double cost_price) {
+    if (cur_st.first.getPrivilege() < 3) throw "no enough privilege" ;
+    book &cur_book = cur_st.second ;
+    if (cur_book.empty()) throw "book not selected" ;
+    cur_book.import (quantity, cost_price) ;
+    book_write (cur_book_pos, cur_book) ;
+}
+
+void show (const char *op_str) {
+    if (cur_st.first.getPrivilege() < 1) throw "no enough privilege" ;
+    vector<int> pos ;
+    vector<book> all_books ;
+    fstream in (book_path, ios::in | ios::binary) ;
+    if (strlen (op_str)) {
+        int len = strlen (op_str) ;
+        char op[110] = {0}; int i = 1, op_len = 0 ;
+        for (; i < len && op_str[i] != '='; i ++) op[op_len ++] = op_str[i] ;
+        if (i == len || i == len - 1) throw "wrong format" ;
+
+        string content ;
+        for (i ++; i < len; i ++) content += op_str[i] ;
+
+        if (strcmp (op, "ISBN") == 0) {
+            char ISBN[70] ;
+            strcpy (ISBN, content.c_str()) ;
+            books.find (data (ISBN, 0), pos) ;
+        } else if (strcmp (op, "name") == 0) {
+            char name[70] ;
+            strcpy (name, content.substr (1, content.length() - 2).c_str()) ;
+            names.find (data (name, 0), pos) ;
+        } else if (strcmp (op, "author") == 0) {
+            char author[70] ;
+            strcpy (author, content.substr (1, content.length() - 2).c_str()) ;
+            authors.find (data (author, 0), pos) ;
+        } else if (strcmp (op, "keyword") == 0) {
+            char keyword[70] ;
+            strcpy (keyword, content.substr (1, content.length() - 2).c_str()) ;
+            keywords.find (data (keyword, 0), pos) ;
+        } else {
+            in.close() ;
+            throw "wrong format" ;
+        }
+        for (int i = 0; i < pos.size(); i ++)
+            all_books.push_back (book_read (pos[i])) ;
+    } else { //show all
+        book cur ;
+        while (in.read (reinterpret_cast<char *>(&cur), sizeof (cur))) {
+            all_books.push_back (cur) ;
+        }
+    }
+    sort (all_books.begin(), all_books.end()) ;
+    for (int i = 0; i < all_books.size(); i ++) cout << all_books[i] << endl ;
+    if (all_books.empty()) cout << endl ;
+    in.close() ;
+}
+
+void show_finance (int cnt) {
+    if (cur_st.first.getPrivilege() < 7) throw "no enough privilege" ;
+    book &cur_book = cur_st.second ;
+    if (cur_book.empty()) throw "book not selected" ;
+    cur_book.show_finance (cnt) ;
+}
+
+void buy (const char *ISBN, int quantity) {
+    vector<int> pos ;
+    books.find (data (ISBN, 0), pos) ;
+    if (pos.empty()) throw "book not found" ;
+    book cur = book_read (pos[0]) ;
+    cur.buy (quantity) ;
+    book_write (pos[0], cur) ;
 }
 
 void runCommands () {
@@ -330,12 +464,39 @@ void runCommands () {
                 printf("Invalid\n") ;
             }
         } else if (strcmp (op, "import") == 0) {
-
+            if (cnt != 3) {
+                printf("Invalid\n"); continue ;
+            }
+            int quantity = read_integer (tmp[1]); double cost_price = read_double (tmp[2]) ;
+            import_book (quantity, cost_price) ;
         } else if (strcmp (op, "show") == 0) {
-
+            if (cnt == 1) show ("") ;
+            else if (cnt == 2) {
+                if (tmp[1][0] == 'f') show_finance (-1) ;
+                else show (tmp[1]) ;
+            }
+            else {
+                if (cnt == 3) {
+                    if (tmp[1][0] != 'f') {
+                        printf("Invalid\n"); continue ;
+                    } else {
+                        show_finance (read_integer (tmp[2])) ;
+                    }
+                } else {
+                    printf("Invalid\n"); continue ;
+                }
+            }
         } else if (strcmp (op, "buy") == 0) {
-
+            if (cnt != 3) {
+                printf("Invalid\n"); continue ;
+            }
+            buy (tmp[1], read_integer (tmp[2])) ;
         } else if (strcmp (op, "exit") == 0) {
+            if (cnt != 1) {
+                printf("Invalid\n"); continue ;
+            }
+            break ;
+        } else if (strcmp (op, "quit") == 0) {
             if (cnt != 1) {
                 printf("Invalid\n"); continue ;
             }
