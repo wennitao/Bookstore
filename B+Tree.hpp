@@ -143,11 +143,11 @@ public:
     pair<int, int> find (const data &x) {
         return find (root, x) ;
     }
-    data findKey (const data &x) {
+    int findKey (const data &x) {
         pair<int, int> pos = find (x) ;
-        if (pos.first == -1) return data ("", -1) ;
+        if (pos.first == -1) return -1 ;
         node cur = disk_read (pos.first) ;
-        return cur.key[pos.second] ;
+        return cur.key[pos.second].pos ;
     }
 
     void find (const data &x, vector<int> &res) {

@@ -21,9 +21,8 @@ BPlusTree keywords ("book_keyword.dat") ;
 user root = user ("root", "root", "sjtu", 7) ;
 user not_logged_in = user ("not_logged_in", "not_logged_in", "not_logged_in", 0) ;
 
-stack<pair<user, book> > cur_status ;
-pair<user, book> cur_st ;
-int cur_book_pos ;
+stack<pair<user, pair<book, int> > > cur_status ;
+pair<user, pair<book, int> > cur_st ;
 
 //first-time launch init
 void init () {
@@ -31,7 +30,6 @@ void init () {
     fstream in ;
     in.open ("users.dat", ios::in | ios::binary) ;
     if (!in.is_open()) {
-        //printf("start init\n") ;
         fstream out ;
         out.open ("users.dat", ios::out | ios::binary) ;
         out.close () ;
@@ -45,8 +43,8 @@ void init () {
         users.insert (data (tmp_userid, out.tellp())) ;
         out.write (reinterpret_cast<char *>(&root), sizeof (root)) ;
     }
-    cur_status.push (make_pair (not_logged_in, book())) ;
-    cur_st = make_pair (not_logged_in, book()) ;
+    cur_st = make_pair (not_logged_in, make_pair (book(), -1)) ;
+    cur_status.push (cur_st) ;
     in.close() ;
 
     //books init
@@ -55,6 +53,7 @@ void init () {
         fstream out ("books.dat", ios::out | ios::binary) ;
         out.close() ;
     }
+    in.close() ;
 
     //finance init
     in.open ("finance.dat", ios::in | ios::binary) ;
@@ -64,6 +63,7 @@ void init () {
         out.write (reinterpret_cast<char *>(&cnt), sizeof cnt) ;
         out.close() ;
     }
+    in.close() ;
 }
 
 //user commands
@@ -94,32 +94,22 @@ void user_write (int pos, user &cur) {
 
 void find (const char *user_id, vector<int> &pos) {
     users.find (data (user_id, 0), pos) ;
-    if (pos.empty() == 0) throw "user not found" ;
+    if (pos.empty()) throw "user not found" ;
 }
 
 void login (const char *user_id, const char *passwd) {
-    try {
-        vector<int> pos ;
-        users.find (data (user_id, 0), pos) ;
-        if (pos.empty()) throw "not found" ;
-        user targ_user = user_read (pos[0]) ;
-        targ_user.login (passwd) ;
-        cur_status.push (make_pair (targ_user, book())) ;
-        cur_st = make_pair (targ_user, book()) ;
-    } catch (...) {
-        printf("Invalid\n") ;
-    }
+    vector<int> pos ;
+    users.find (data (user_id, 0), pos) ;
+    if (pos.empty()) throw "user not found" ;
+    user targ_user = user_read (pos[0]) ;
+    targ_user.login (passwd) ;
+    cur_st = make_pair (targ_user, make_pair (book(), -1)) ;
+    cur_status.push (cur_st) ;
 }
 
 void logout () {
     if (cur_st.first.getPrivilege () < 1) throw "Can not logout" ;
     cur_status.pop(); cur_st = cur_status.top() ;
-    vector<int> pos ;
-    char ISBN[30] ;
-    cur_st.second.getISBN (ISBN) ;
-    books.find (data (ISBN, 0), pos) ;
-    if (pos.empty()) cur_book_pos = -1 ;
-    else cur_book_pos = pos[0] ;
 }
 
 void addUser (const char *user_id, const char *passwd, const int privilege, const char *name) {
@@ -142,33 +132,23 @@ void registerUser (const char *user_id, const char *passwd, const char *name) {
 }
 
 void deleteUser (const char *user_id) {
+    if (cur_st.first.getPrivilege () < 7) throw "no enought privilege" ;
     vector<int> pos ;
     users.find (data (user_id, 0), pos) ;
     if (pos.empty()) throw "user not found" ;
-    try {
-        users.erase (data (user_id, pos[0])) ;
-    } catch (...) {
-        printf("Invalid\n") ;
-    }
+    users.erase (data (user_id, pos[0])) ;
 }
 
 void updatePasswd (const char *user_id, const char *old_passwd, const char *new_passwd) {
     if (cur_st.first.getPrivilege () < 1) throw "no enough privilege" ;
-    try {
-        vector<int> pos ;
-        users.find (data (user_id, 0), pos) ;
-        if (pos.empty()) throw "not found" ;
-        user targ_user = user_read (pos[0]) ;
-        try {
-            bool is_root = cur_st.first.is_root () ;
-            targ_user.updatePassword (old_passwd, new_passwd, is_root) ;
-            user_write (pos[0], targ_user) ;
-        } catch (...) {
-            printf("Invalid\n") ;
-        }
-    } catch (...) {
-        printf("Invalid\n") ;
-    }
+    vector<int> pos ;
+    users.find (data (user_id, 0), pos) ;
+    if (pos.empty()) throw "not found" ;
+    user targ_user = user_read (pos[0]) ;
+
+    bool is_root = cur_st.first.is_root () ;
+    targ_user.updatePassword (old_passwd, new_passwd, is_root) ;
+    user_write (pos[0], targ_user) ;
 }
 
 //book commands
@@ -202,7 +182,6 @@ int read_integer (const char *num) {
     for (int i = 0; i < len; i ++) x = x * 10 + num[i] - '0' ;
     return x ;
 }
-
 double read_double (const char *num) {
     double p = 0, pdot = 0, now = 0.1; int i = 0, len = strlen (num);
     for (; i < len && num[i] != '.' && num[i]; i ++) p = p * 10 + num[i] - '0' ;
@@ -220,21 +199,17 @@ void select (const char *ISBN) {
         cur = book (ISBN) ;
         int write_pos = book_write (cur) ;
         books.insert (data (ISBN, write_pos)) ;
-        cur_book_pos = write_pos ;
+        cur_st.second = make_pair (cur, write_pos) ;
     } else {
         cur = book_read (pos[0]) ;
-        cur_book_pos = pos[0] ;
+        cur_st.second = make_pair (cur, pos[0]) ;
     }
-    cur_st.second = cur; cur_status.top() = cur_st ;
-
-    //cout << cur << endl ;
-    //books.print() ;
+    cur_status.top() = cur_st ;
 }
 
 void modify (const char *op_str) {
-    //cout << op_str << endl ;
     if (cur_st.first.getPrivilege() < 3) throw "no enough privilege" ;
-    book &cur_book = cur_st.second ;
+    book &cur_book = cur_st.second.first;
     if (cur_book.empty()) throw "book not selected" ;
 
     int len = strlen (op_str) ;
@@ -245,8 +220,6 @@ void modify (const char *op_str) {
     string content ;
     for (i ++; i < len; i ++) content += op_str[i] ;
 
-    //cout << op << " " << content << endl ;
-
     if (strcmp (op, "ISBN") == 0) {
         char ISBN[30] ;
         strcpy (ISBN, content.c_str()) ;
@@ -255,47 +228,37 @@ void modify (const char *op_str) {
         if (!pos.empty()) throw "ISBN already exists" ;
 
         cur_book.getISBN (ISBN) ;
-        books.erase (data (ISBN, cur_book_pos)) ;
+        books.erase (data (ISBN, cur_st.second.second)) ;
         strcpy (ISBN, content.c_str()) ;
         cur_book.modify_ISBN (ISBN) ;
-        books.insert (data (ISBN, cur_book_pos)) ;
+        books.insert (data (ISBN, cur_st.second.second)) ;
 
-        //books.print() ;
     } else if (strcmp (op, "name") == 0) {
-        //printf("modify name\n") ;
         char name[70] ;
         cur_book.getName (name) ;
         if (strlen (name)) {
-            names.erase (data (name, cur_book_pos)) ;
+            names.erase (data (name, cur_st.second.second)) ;
         }
         strcpy (name, content.substr (1, content.length() - 2).c_str()) ;
         cur_book.modify_name (name) ;
-        names.insert (data (name, cur_book_pos)) ;
+        names.insert (data (name, cur_st.second.second)) ;
 
-        //names.print() ;
     } else if (strcmp (op, "author") == 0) {
-        //printf("modify author\n") ;
-        //cout << op << " " << content << endl ;
         char author[70] ;
         cur_book.getAuthor (author) ;
         if (strlen (author)) {
-            authors.erase (data (author, cur_book_pos)) ;
+            authors.erase (data (author, cur_st.second.second)) ;
         }
         strcpy (author, content.substr (1, content.length() - 2).c_str()) ;
         cur_book.modify_author (author) ;
-        authors.insert (data (author, cur_book_pos)) ;
+        authors.insert (data (author, cur_st.second.second)) ;
 
-        //authors.print() ;
     } else if (strcmp (op, "keyword") == 0) {
-        //printf("modify keyword\n") ;
         int cnt = cur_book.getKeywordCount() ;
         char keyword[70], tmp[70] ;
         for (int i = 0; i < cnt; i ++) {
             cur_book.getKeyword (i, tmp) ;
-            //printf("delete %s %d\n", tmp, cur_book_pos) ;
-            keywords.erase (data (tmp, cur_book_pos)) ;
-            //keywords.print() ;
-            //printf("--------------------------------\n") ;
+            keywords.erase (data (tmp, cur_st.second.second)) ;
         }
         cur_book.clear_keyword() ;
 
@@ -307,10 +270,7 @@ void modify (const char *op_str) {
                 tmp[cur_word] = keyword[cur] ;
             tmp[cur_word ++] = '\0' ;
             cur_book.add_keyword (tmp) ;
-            //printf("insert %s %d\n", tmp, cur_book_pos) ;
-            keywords.insert (data (tmp, cur_book_pos)) ;
-            //keywords.print() ;            
-            //printf("--------------------------------\n") ;
+            keywords.insert (data (tmp, cur_st.second.second)) ;
             if (!keyword[cur ++]) break ;
         }
     } else if (strcmp (op, "price") == 0) {
@@ -320,19 +280,20 @@ void modify (const char *op_str) {
         throw "wrong format" ;
     }
 
-    //cout << cur_book << endl ;
-    book_write (cur_book_pos, cur_book) ;
+    book_write (cur_st.second.second, cur_book) ;
+    cur_status.top() = cur_st ;
 }
 
 void add_finance_log (double p) ;
 void import_book (int quantity, double cost_price) {
     if (cur_st.first.getPrivilege() < 3) throw "no enough privilege" ;
-    book &cur_book = cur_st.second ;
+    book &cur_book = cur_st.second.first ;
     if (cur_book.empty()) throw "book not selected" ;
     cur_book.import (quantity) ;
-    book_write (cur_book_pos, cur_book) ;
+    book_write (cur_st.second.second, cur_book) ;
     
     add_finance_log (-cost_price) ;
+    cur_status.top() = cur_st ;
 }
 
 void show (const char *op_str) {
@@ -433,82 +394,42 @@ void buy (const char *ISBN, int quantity) {
 }
 
 void runCommands () {
+    //int cnt = 0 ;
     string op_string, tmp_op_string ;
     while (getline (cin, op_string)) {
+        //cout << "line " << ++ cnt << " " << op_string << endl ;
         tmp_op_string = op_string ;
         stringstream ss (op_string) ;
         char tmp[110][110]; int cnt = 0 ;
         while (ss >> tmp[cnt]) cnt ++ ;
         char op[20] ;
         strcpy (op, tmp[0]) ;
-        if (strcmp (op, "su") == 0) {
-            if (cnt != 3) {
-                printf("Invalid\n"); continue ;
-            }
-            try {
+        try {
+            if (strcmp (op, "su") == 0) {
+                if (cnt != 3) throw "wrong command" ;
                 login (tmp[1], tmp[2]) ; //user_id, passwd
-            } catch (...) {
-                printf("Invalid\n") ;
-            }
-        } else if (strcmp (op, "logout") == 0) {
-            if (cnt != 1) {
-                printf("Invalid\n"); continue ;
-            }
-            try {
+            } else if (strcmp (op, "logout") == 0) {
+                if (cnt != 1) throw "wrong command" ;
                 logout () ;
-            } catch (...) {
-                printf("Invalid\n") ;
-            }
-        } else if (strcmp (op, "useradd") == 0) {
-            if (cnt != 5) {
-                printf("Invalid\n"); continue ;
-            }
-            int p = 0 ;
-            for (int i = 0; tmp[3][i]; i ++) p = p * 10 + tmp[3][i] - '0' ;
-            try {
+            } else if (strcmp (op, "useradd") == 0) {
+                if (cnt != 5) throw "wrong command" ;
+                int p = 0 ;
+                for (int i = 0; tmp[3][i]; i ++) p = p * 10 + tmp[3][i] - '0' ;
                 useradd (tmp[1], tmp[2], p, tmp[4]) ;
-            } catch (...) {
-                printf("Invalid\n") ;
-            }
-        } else if (strcmp (op, "register") == 0) {
-            if (cnt != 4) {
-                printf("Invalid\n"); continue ;
-            }
-            try {
+            } else if (strcmp (op, "register") == 0) {
+                if (cnt != 4) throw "wrong command" ;
                 registerUser (tmp[1], tmp[2], tmp[3]) ;
-            } catch (...) {
-                printf("Invalid\n") ;
-            }
-        } else if (strcmp (op, "delete") == 0) {
-            if (cnt != 2) {
-                printf("Invalid\n"); continue ;
-            }
-            try {
+            } else if (strcmp (op, "delete") == 0) {
+                if (cnt != 2) throw "wrong command" ;
                 deleteUser (tmp[1]) ;
-            } catch (...) {
-                printf("Invalid\n") ;
-            }
-        } else if (strcmp (op, "passwd") == 0) {
-            if (cnt < 3 || cnt > 4) {
-                printf("Invalid\n"); continue ;
-            }
-            try {
+            } else if (strcmp (op, "passwd") == 0) {
+                if (cnt < 3 || cnt > 4) throw "wrong command" ;
                 if (cnt == 3) updatePasswd (tmp[1], "", tmp[2]) ;
                 else updatePasswd (tmp[1], tmp[2], tmp[3]) ;
-            } catch (...) {
-                printf("Invalid\n") ;
-            }
-        } else if (strcmp (op, "select") == 0) {
-            if (cnt != 2) {
-                printf("Invalid\n"); continue ;
-            }
-            try {
+            } else if (strcmp (op, "select") == 0) {
+                if (cnt != 2) throw "wrong command" ;
                 select (tmp[1]) ;
-            } catch (...) {
-                printf("Invalid\n") ;
-            }
-        } else if (strcmp (op, "modify") == 0) {
-            try {
+            } else if (strcmp (op, "modify") == 0) {
                 string ops[110] ;
                 int pos = 0, opcnt = 0 ;
                 for (; pos < tmp_op_string.length() && tmp_op_string[pos] != '-'; pos ++) ;
@@ -524,21 +445,11 @@ void runCommands () {
                     pos = nxt ;
                 }
                 for (int i = 0; i < opcnt; i ++) modify (ops[i].c_str()) ;
-            } catch (...) {
-                printf("Invalid\n") ;
-            }
-        } else if (strcmp (op, "import") == 0) {
-            if (cnt != 3) {
-                printf("Invalid\n"); continue ;
-            }
-            try {
+            } else if (strcmp (op, "import") == 0) {
+                if (cnt != 3) throw "wrong command" ;
                 int quantity = read_integer (tmp[1]); double cost_price = read_double (tmp[2]) ;
                 import_book (quantity, cost_price) ;
-            } catch (...) {
-                printf("Invalid\n"); continue ;
-            }
-        } else if (strcmp (op, "show") == 0) {
-            try {
+            } else if (strcmp (op, "show") == 0) {
                 if (cnt == 1) show ("") ;
                 else if (cnt == 2) {
                     if (tmp[1][0] == 'f') show_finance (2e9) ;
@@ -546,103 +457,36 @@ void runCommands () {
                 }
                 else {
                     if (cnt == 3) {
-                        if (tmp[1][0] != 'f') {
-                            printf("Invalid\n"); continue ;
-                        } else {
-                            show_finance (read_integer (tmp[2])) ;
-                        }
+                        if (tmp[1][0] != 'f') throw "wrong command" ;
+                        else show_finance (read_integer (tmp[2])) ;
                     } else {
-                        printf("Invalid\n"); continue ;
+                        throw "wrong command" ;
                     }
                 }
-            } catch (...) {
-                printf("Invalid\n"); continue ;
-            }
-        } else if (strcmp (op, "buy") == 0) {
-            if (cnt != 3) {
-                printf("Invalid\n"); continue ;
-            }
-            try {
+            } else if (strcmp (op, "buy") == 0) {
+                if (cnt != 3) throw "wrong command" ;
                 buy (tmp[1], read_integer (tmp[2])) ;
-            } catch (...) {
-                printf("Invalid\n"); continue ;
+            } else if (strcmp (op, "exit") == 0) {
+                if (cnt != 1) throw "wrong command" ;
+                break ;
+            } else if (strcmp (op, "quit") == 0) {
+                if (cnt != 1) throw "wrong command" ;
+                break ;
+            } else {
+                throw "wrong command" ;
             }
-        } else if (strcmp (op, "exit") == 0) {
-            if (cnt != 1) {
-                printf("Invalid\n"); continue ;
-            }
-            break ;
-        } else if (strcmp (op, "quit") == 0) {
-            if (cnt != 1) {
-                printf("Invalid\n"); continue ;
-            }
-            break ;
-        } else {
+        } catch (...) {
             printf("Invalid\n") ;
         }
-
-        //printf("users:\n"); users.print(); cout << endl ;
-        //printf("books:\n"); books.print(); cout << endl ;
-        //printf("names:\n"); names.print(); cout << endl ;
-        //printf("authors:\n"); authors.print(); cout << endl ;
-        //printf("keywords:\n"); keywords.print();
-        //printf("------------------------\n") ;
     }
 }
 
 int main() {
     init () ;
-    //users.print() ;
-
     runCommands () ;
-    /*for (int t = 0; t < 1000; t ++) {
-        printf("Test %d\n", t) ;
-        system ("rm *.dat") ;
-        BPlusTree test ("test.dat") ;
-        int seed = time (0) ;
-        //int seed = 1611835925 ;
-        srand (seed) ;
-        char s[100010][20] ;
-        memset (s, 0, sizeof s) ;
-        int n = 30 ;
-        for (int i = 1; i <= n; i ++) {
-            int len = 1 + rand() % 10 ;
-            for (int j = 0; j < len; j ++)
-                s[i][j] = 'a' + rand() % 26 ;
-            //printf("insert (%s %d)\n", s[i], i) ;
-            test.insert (data (s[i], i)) ;
-            //test.print();
-            //printf("----------------------------\n") ;
-        }
-        for (int i = 1; i <= n; i ++) {
-            //printf("erase (%s %d)\n", s[i], i) ;
-            test.erase (data  (s[i], i)) ;
-            //test.print() ;
-            //printf("----------------------------\n") ;
-            for (int j = i + 1; j <= n; j ++) {
-                data res = test.findKey (data (s[j], j)) ;
-                if (j != res.pos) {
-                    printf("seed:%d test:(%s %d) %d\n", seed, s[j], j, res.pos) ;
-                    puts ("QAQ") ;
-                    return 0 ;
-                }
-            }
-        }
-        for (int i = 1; i <= n; i ++) {
-            data res = test.findKey (data (s[i], i)) ;
-            if (i != res.pos) {
-                //printf("del:%d cur:%d\n", j, i) ;
-                printf("seed:%d test:(%s %d) %d\n", seed, s[i], i, res.pos) ;
-                puts ("QAQ") ;
-                return 0 ;
-            }
-        }
-        
-        //printf("\n") ;
-    }*/
-    //int seed = 1611818624 ;*/
     return 0 ;
 }
 
 
-//complex test 1.in line 142
+//complex test output line 159 161 172 182-183...
+//1.out command no.409
