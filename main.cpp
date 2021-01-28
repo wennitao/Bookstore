@@ -245,6 +245,8 @@ void modify (const char *op_str) {
     string content ;
     for (i ++; i < len; i ++) content += op_str[i] ;
 
+    //cout << op << " " << content << endl ;
+
     if (strcmp (op, "ISBN") == 0) {
         char ISBN[30] ;
         strcpy (ISBN, content.c_str()) ;
@@ -260,6 +262,7 @@ void modify (const char *op_str) {
 
         //books.print() ;
     } else if (strcmp (op, "name") == 0) {
+        //printf("modify name\n") ;
         char name[70] ;
         cur_book.getName (name) ;
         if (strlen (name)) {
@@ -271,6 +274,8 @@ void modify (const char *op_str) {
 
         //names.print() ;
     } else if (strcmp (op, "author") == 0) {
+        //printf("modify author\n") ;
+        //cout << op << " " << content << endl ;
         char author[70] ;
         cur_book.getAuthor (author) ;
         if (strlen (author)) {
@@ -282,11 +287,15 @@ void modify (const char *op_str) {
 
         //authors.print() ;
     } else if (strcmp (op, "keyword") == 0) {
+        //printf("modify keyword\n") ;
         int cnt = cur_book.getKeywordCount() ;
         char keyword[70], tmp[70] ;
         for (int i = 0; i < cnt; i ++) {
             cur_book.getKeyword (i, tmp) ;
+            //printf("delete %s %d\n", tmp, cur_book_pos) ;
             keywords.erase (data (tmp, cur_book_pos)) ;
+            //keywords.print() ;
+            //printf("--------------------------------\n") ;
         }
         cur_book.clear_keyword() ;
 
@@ -298,11 +307,12 @@ void modify (const char *op_str) {
                 tmp[cur_word] = keyword[cur] ;
             tmp[cur_word ++] = '\0' ;
             cur_book.add_keyword (tmp) ;
+            //printf("insert %s %d\n", tmp, cur_book_pos) ;
             keywords.insert (data (tmp, cur_book_pos)) ;
+            //keywords.print() ;            
+            //printf("--------------------------------\n") ;
             if (!keyword[cur ++]) break ;
         }
-
-        //keywords.print() ;
     } else if (strcmp (op, "price") == 0) {
         double price = read_double (content.c_str()) ;
         cur_book.modify_price (price) ;
@@ -571,8 +581,12 @@ void runCommands () {
             printf("Invalid\n") ;
         }
 
-        //users.print() ;
-        keywords.print() ;
+        //printf("users:\n"); users.print(); cout << endl ;
+        //printf("books:\n"); books.print(); cout << endl ;
+        //printf("names:\n"); names.print(); cout << endl ;
+        //printf("authors:\n"); authors.print(); cout << endl ;
+        //printf("keywords:\n"); keywords.print();
+        //printf("------------------------\n") ;
     }
 }
 
@@ -581,5 +595,54 @@ int main() {
     //users.print() ;
 
     runCommands () ;
+    /*for (int t = 0; t < 1000; t ++) {
+        printf("Test %d\n", t) ;
+        system ("rm *.dat") ;
+        BPlusTree test ("test.dat") ;
+        int seed = time (0) ;
+        //int seed = 1611835925 ;
+        srand (seed) ;
+        char s[100010][20] ;
+        memset (s, 0, sizeof s) ;
+        int n = 30 ;
+        for (int i = 1; i <= n; i ++) {
+            int len = 1 + rand() % 10 ;
+            for (int j = 0; j < len; j ++)
+                s[i][j] = 'a' + rand() % 26 ;
+            //printf("insert (%s %d)\n", s[i], i) ;
+            test.insert (data (s[i], i)) ;
+            //test.print();
+            //printf("----------------------------\n") ;
+        }
+        for (int i = 1; i <= n; i ++) {
+            //printf("erase (%s %d)\n", s[i], i) ;
+            test.erase (data  (s[i], i)) ;
+            //test.print() ;
+            //printf("----------------------------\n") ;
+            for (int j = i + 1; j <= n; j ++) {
+                data res = test.findKey (data (s[j], j)) ;
+                if (j != res.pos) {
+                    printf("seed:%d test:(%s %d) %d\n", seed, s[j], j, res.pos) ;
+                    puts ("QAQ") ;
+                    return 0 ;
+                }
+            }
+        }
+        for (int i = 1; i <= n; i ++) {
+            data res = test.findKey (data (s[i], i)) ;
+            if (i != res.pos) {
+                //printf("del:%d cur:%d\n", j, i) ;
+                printf("seed:%d test:(%s %d) %d\n", seed, s[i], i, res.pos) ;
+                puts ("QAQ") ;
+                return 0 ;
+            }
+        }
+        
+        //printf("\n") ;
+    }*/
+    //int seed = 1611818624 ;*/
     return 0 ;
 }
+
+
+//complex test 1.in line 142

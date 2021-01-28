@@ -13,6 +13,9 @@ struct data {
         strcpy (str, _str) ;
         pos = p ;
     }
+    void print() const {
+        printf("str:%s pos:%d\n", str, pos) ;
+    }
     bool operator < (const data &a) const {
         if (strcmp (str, a.str) == 0) return pos < a.pos ;
         return strcmp (str, a.str) < 0 ;
