@@ -113,10 +113,8 @@ public:
     }
 
     void find (int v, const data &x, vector<int> &res) { //find node == x
-        //printf("v:%d ", v) ;
         if (v == -1) return ;
         node cur = disk_read (v) ;
-        //cur.print() ;
         int pos = 0 ;
         for (; pos < cur.keyCnt && cur.key[pos] < x; pos ++) ;
         if (cur.is_leaf) {
@@ -153,18 +151,6 @@ public:
     void find (const data &x, vector<int> &res) {
         find (root, x, res) ;
     }
-
-    /*T find (const pair<int, int> pos) {
-        node cur = disk_read (pos.first) ;
-        return cur.key[pos.second] ;
-    }
-
-    T findKey (const T &x) {
-        pair<int, int> pos = find (x) ;
-        if (pos.first == -1) throw "not found" ;
-        node cur = disk_read (pos.first) ;
-        return cur.key[pos.second] ;
-    }*/
 
     int search (int v, const data &x) { //find the leaf_node where can insert x
         node cur = disk_read (v) ;
@@ -229,7 +215,6 @@ public:
     }
 
     void insert (const data &x) {
-        //printf("insert "); x.print() ;
         if (root == -1) {
             node cur ;
             cur.key[cur.keyCnt ++] = x ;
@@ -260,8 +245,6 @@ public:
 
     void erase_par (int v) {
         node cur = disk_read (v) ;
-        //printf("par v:%d\n", v) ;
-        //cur.print(); cout << endl ;
         if (cur.keyCnt >= size / 2) return ;
         int par = cur.par ;
         if (par == -1) return ;
@@ -277,7 +260,6 @@ public:
         if (rbro != -1) rbro_node = disk_read (rbro) ;
 
         if (lbro != -1 && lbro_node.keyCnt > size / 2) { //borrow one from left brother
-            //printf("borrow from left brother %d\n", lbro) ;
             for (int i = cur.keyCnt; i >= 1; i --)
                 cur.key[i] = cur.key[i - 1] ;
             for (int i = size + 1; i >= 1; i --)
@@ -294,7 +276,6 @@ public:
             disk_write (v, cur) ;
             disk_write (lbro, lbro_node); disk_write (par, par_node) ;
         } else if (rbro != -1 && rbro_node.keyCnt > size / 2) { //borrow one from right brother
-            //printf("borrow from right brother %d\n", rbro) ;
             cur.key[cur.keyCnt ++] = par_node.key[son_pos] ;
             
             cur.son[cur.keyCnt] = rbro_node.son[0] ;
@@ -312,7 +293,6 @@ public:
             disk_write (rbro, rbro_node); disk_write (par, par_node) ;
         } else {
             if (lbro != -1) { //merge with left brother
-                //printf("merge with left brother %d\n", lbro) ;
                 lbro_node.key[lbro_node.keyCnt ++] = par_node.key[son_pos - 1] ;
                 for (int i = son_pos; i < par_node.keyCnt; i ++)
                     par_node.key[i - 1] = par_node.key[i] ;
@@ -336,11 +316,7 @@ public:
                     disk_write (par, par_node) ;
                     erase_par (par) ;
                 }
-
-                //printf("lbro:%d\n", lbro); lbro_node.print(); cout << endl ;
-                //printf("par:%d\n", par); par_node.print(); cout << endl ;
             } else if (rbro != -1) { //merge with right brother
-                //printf("merge with right brother %d\n", rbro) ;
                 cur.key[cur.keyCnt ++] = par_node.key[son_pos] ;
                 for (int i = son_pos + 1; i < par_node.keyCnt; i ++)
                     par_node.key[i - 1] = par_node.key[i] ;
@@ -352,7 +328,7 @@ public:
                 }
                 for (int i = 0; i < rbro_node.keyCnt; i ++)
                     cur.key[cur.keyCnt ++] = rbro_node.key[i] ;
-                for (int i = son_pos + 1; i <= size + 2; i ++) //son_pos + 2 -> son_pos + 1
+                for (int i = son_pos + 1; i <= size + 2; i ++)
                     par_node.son[i - 1] = par_node.son[i] ;
                 par_node.son[son_pos] = v ;
 
@@ -364,23 +340,14 @@ public:
                     disk_write (par, par_node) ;
                     erase_par (par) ;
                 }
-
-                //printf("v:%d\n", v); cur.print(); cout << endl ;
-                //printf("par:%d\n", par); par_node.print(); cout << endl ;
             }
         }
     }
 
     void erase (const data &x) {
         pair<int, int> pos = find (x) ;
-        if (pos.first == -1) {
-            //printf("not found\n") ;
-            throw "not found" ;
-        }
-        //printf("found the key\n") ;
-        //delete the key
+        if (pos.first == -1) throw "not found" ;
         node cur = disk_read (pos.first) ;
-        //printf("pos:(%d %d)\n", pos.first, pos.second) ;
         for (int i = pos.second + 1; i < cur.keyCnt; i ++)
             cur.key[i - 1] = cur.key[i] ;
         clear (cur.key[cur.keyCnt - 1]); cur.keyCnt -- ;
@@ -404,7 +371,6 @@ public:
             if (rbro != -1) rbro_node = disk_read (rbro) ;
 
             if (lbro != -1 && lbro_node.keyCnt > size / 2) { //borrow one from left brother
-                //printf("borrow from left brother\n") ;
                 for (int i = cur.keyCnt; i >= 1; i --)
                     cur.key[i] = cur.key[i - 1] ;
                 cur.key[0] = lbro_node.key[lbro_node.keyCnt - 1] ;
@@ -415,7 +381,6 @@ public:
                 disk_write (pos.first, cur) ;
                 disk_write (lbro, lbro_node); disk_write (cur.par, par_node) ;
             } else if (rbro != -1 && rbro_node.keyCnt > size / 2) { //borrow one from right brother
-                //printf("borrow from right brother\n") ;
                 cur.key[cur.keyCnt ++] = rbro_node.key[0] ;
                 for (int i = 1; i < rbro_node.keyCnt; i ++)
                     rbro_node.key[i - 1] = rbro_node.key[i] ;
@@ -446,11 +411,7 @@ public:
                         disk_write (cur.par, par_node) ;
                         erase_par (cur.par) ;
                     }
-
-                    //printf("after merge:\nlbro_node:%d\n", lbro); lbro_node.print();
-                    //printf("\npar_node:%d\n", cur.par); par.print(); cout << endl ;
                 } else if (rbro != -1) { //merge with right brother
-                    //printf("merge with right brother\n") ;
                     for (int i = 0; i < rbro_node.keyCnt; i ++)
                         cur.key[cur.keyCnt ++] = rbro_node.key[i] ;
                     for (int i = son_pos + 2; i <= size + 2; i ++)
@@ -461,10 +422,7 @@ public:
                             par_node.key[i - 1] = par_node.key[i] ;
                     }
                     par_node.keyCnt -- ;
-
-                    //printf("after merge:\ncur:%d\n", pos.first); cur.print();
-                    //printf("\npar_node:%d\n", cur.par); par.print(); cout << endl ;
-
+                    
                     if (par_node.keyCnt == 0 && par == root) {
                         root = pos.first; cur.par = -1 ;
                         disk_write (pos.first, cur); 
