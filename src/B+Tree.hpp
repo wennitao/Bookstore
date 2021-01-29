@@ -10,7 +10,7 @@
 
 using namespace std;
 
-const int size = 4 ;
+const int size = 20 ;
 
 class BPlusTree {
 private:
