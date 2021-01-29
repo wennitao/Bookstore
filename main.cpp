@@ -21,75 +21,78 @@ BPlusTree keywords ("book_keyword.dat") ;
 user root = user ("root", "root", "sjtu", 7) ;
 user not_logged_in = user ("not_logged_in", "not_logged_in", "not_logged_in", 0) ;
 
-stack<pair<user, pair<book, int> > > cur_status ;
-pair<user, pair<book, int> > cur_st ;
+stack<pair<user, int> > cur_status ;
+pair<user, int> cur_st ;
+
+fstream userio, bookio, financeio ;
 
 //first-time launch init
 void init () {
     //users init
-    fstream in ;
-    in.open ("users.dat", ios::in | ios::binary) ;
-    if (!in.is_open()) {
-        fstream out ;
-        out.open ("users.dat", ios::out | ios::binary) ;
-        out.close () ;
-        out.open ("users.dat", ios::in | ios::out | ios::binary) ;
-        out.seekp (0, ios::end) ;
+    userio.open ("users.dat", ios::in | ios::binary) ;
+    if (!userio.is_open()) {
+        userio.open ("users.dat", ios::out | ios::binary) ;
+        userio.close () ;
+        userio.open ("users.dat", ios::in | ios::out | ios::binary) ;
+        userio.seekp (0, ios::end) ;
         char tmp_userid[35] ;
         not_logged_in.getUserid (tmp_userid) ;
-        users.insert (data (tmp_userid, out.tellp())) ;
-        out.write (reinterpret_cast<char *>(&not_logged_in), sizeof (not_logged_in)) ;
+        users.insert (data (tmp_userid, userio.tellp())) ;
+        userio.write (reinterpret_cast<char *>(&not_logged_in), sizeof (not_logged_in)) ;
         root.getUserid (tmp_userid) ;
-        users.insert (data (tmp_userid, out.tellp())) ;
-        out.write (reinterpret_cast<char *>(&root), sizeof (root)) ;
+        users.insert (data (tmp_userid, userio.tellp())) ;
+        userio.write (reinterpret_cast<char *>(&root), sizeof (root)) ;
     }
-    cur_st = make_pair (not_logged_in, make_pair (book(), -1)) ;
+    cur_st = make_pair (not_logged_in, -1) ;
     cur_status.push (cur_st) ;
-    in.close() ;
+    userio.close() ;
 
     //books init
-    in.open ("books.dat", ios::in | ios::binary) ;
-    if (!in.is_open()) {
-        fstream out ("books.dat", ios::out | ios::binary) ;
-        out.close() ;
+    bookio.open ("books.dat", ios::in | ios::binary) ;
+    if (!bookio.is_open()) {
+        bookio.open ("books.dat", ios::out | ios::binary) ;
+        bookio.close() ;
     }
-    in.close() ;
+    bookio.close() ;
 
     //finance init
-    in.open ("finance.dat", ios::in | ios::binary) ;
-    if (!in.is_open()) {
-        fstream out ("finance.dat", ios::out | ios::binary) ;
+    financeio.open ("finance.dat", ios::in | ios::binary) ;
+    if (!financeio.is_open()) {
+        financeio.open ("finance.dat", ios::out | ios::binary) ;
         int cnt = 0 ;
-        out.write (reinterpret_cast<char *>(&cnt), sizeof cnt) ;
-        out.close() ;
+        financeio.write (reinterpret_cast<char *>(&cnt), sizeof cnt) ;
+        financeio.close() ;
     }
-    in.close() ;
+    financeio.close() ;
 }
 
 //user commands
 const char user_path[50] = "users.dat" ;
 
 user user_read (int pos) {
-    fstream in (user_path, ios::in | ios::binary) ;
-    in.seekg (pos, ios::beg) ;
+    if (userio.is_open()) userio.close() ;
+    userio.open (user_path, ios::in | ios::binary) ;
+    userio.seekg (pos, ios::beg) ;
     user cur ;
-    in.read (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
-    in.close() ;
+    userio.read (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
+    userio.close() ;
     return cur ;
 }
 int user_write (user &cur) {
-    fstream out (user_path, ios::in | ios::out | ios::binary) ;
-    out.seekp (0, ios::end) ;
-    int pos = out.tellp() ;
-    out.write (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
-    out.close() ;
+    if (userio.is_open()) userio.close() ;
+    userio.open (user_path, ios::in | ios::out | ios::binary) ;
+    userio.seekp (0, ios::end) ;
+    int pos = userio.tellp() ;
+    userio.write (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
+    userio.close() ;
     return pos ;
 }
 void user_write (int pos, user &cur) {
-    fstream out (user_path, ios::in | ios::out | ios::binary) ;
-    out.seekp (pos, ios::beg) ;
-    out.write (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
-    out.close() ;
+    if (userio.is_open()) userio.close() ;
+    userio.open (user_path, ios::in | ios::out | ios::binary) ;
+    userio.seekp (pos, ios::beg) ;
+    userio.write (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
+    userio.close() ;
 }
 
 void find (const char *user_id, vector<int> &pos) {
@@ -103,7 +106,7 @@ void login (const char *user_id, const char *passwd) {
     if (pos.empty()) throw "user not found" ;
     user targ_user = user_read (pos[0]) ;
     targ_user.login (passwd) ;
-    cur_st = make_pair (targ_user, make_pair (book(), -1)) ;
+    cur_st = make_pair (targ_user, -1) ;
     cur_status.push (cur_st) ;
 }
 
@@ -155,26 +158,30 @@ void updatePasswd (const char *user_id, const char *old_passwd, const char *new_
 const char book_path[50] = "books.dat" ;
 
 book book_read (int pos) {
-    fstream in (book_path, ios::in | ios::binary) ;
-    in.seekg (pos, ios::beg) ;
+    if (pos == -1) return book () ;
+    if (bookio.is_open()) bookio.close() ;
+    bookio.open (book_path, ios::in | ios::binary) ;
+    bookio.seekg (pos, ios::beg) ;
     book cur ;
-    in.read (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
-    in.close() ;
+    bookio.read (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
+    bookio.close() ;
     return cur ;
 }
 int book_write (book &cur) {
-    fstream out (book_path, ios::in | ios::out | ios::binary) ;
-    out.seekp (0, ios::end) ;
-    int pos = out.tellp() ;
-    out.write (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
-    out.close() ;
+    if (bookio.is_open()) bookio.close() ;
+    bookio.open (book_path, ios::in | ios::out | ios::binary) ;
+    bookio.seekp (0, ios::end) ;
+    int pos = bookio.tellp() ;
+    bookio.write (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
+    bookio.close() ;
     return pos ;
 }
 void book_write (int pos, book &cur) {
-    fstream out (book_path, ios::in | ios::out | ios::binary) ;
-    out.seekp (pos, ios::beg) ;
-    out.write (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
-    out.close() ;
+    if (bookio.is_open()) bookio.close() ;
+    bookio.open (book_path, ios::in | ios::out | ios::binary) ;
+    bookio.seekp (pos, ios::beg) ;
+    bookio.write (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
+    bookio.close() ;
 }
 
 int read_integer (const char *num) {
@@ -199,17 +206,17 @@ void select (const char *ISBN) {
         cur = book (ISBN) ;
         int write_pos = book_write (cur) ;
         books.insert (data (ISBN, write_pos)) ;
-        cur_st.second = make_pair (cur, write_pos) ;
+        cur_st.second = write_pos ;
     } else {
         cur = book_read (pos[0]) ;
-        cur_st.second = make_pair (cur, pos[0]) ;
+        cur_st.second = pos[0] ;
     }
-    cur_status.top() = cur_st ;
+    //cur_status.top() = cur_st ;
 }
 
 void modify (const char *op_str) {
     if (cur_st.first.getPrivilege() < 3) throw "no enough privilege" ;
-    book &cur_book = cur_st.second.first;
+    book cur_book = book_read (cur_st.second) ;
     if (cur_book.empty()) throw "book not selected" ;
 
     int len = strlen (op_str) ;
@@ -228,37 +235,37 @@ void modify (const char *op_str) {
         if (!pos.empty()) throw "ISBN already exists" ;
 
         cur_book.getISBN (ISBN) ;
-        books.erase (data (ISBN, cur_st.second.second)) ;
+        books.erase (data (ISBN, cur_st.second)) ;
         strcpy (ISBN, content.c_str()) ;
         cur_book.modify_ISBN (ISBN) ;
-        books.insert (data (ISBN, cur_st.second.second)) ;
+        books.insert (data (ISBN, cur_st.second)) ;
 
     } else if (strcmp (op, "name") == 0) {
         char name[70] ;
         cur_book.getName (name) ;
         if (strlen (name)) {
-            names.erase (data (name, cur_st.second.second)) ;
+            names.erase (data (name, cur_st.second)) ;
         }
         strcpy (name, content.substr (1, content.length() - 2).c_str()) ;
         cur_book.modify_name (name) ;
-        names.insert (data (name, cur_st.second.second)) ;
+        names.insert (data (name, cur_st.second)) ;
 
     } else if (strcmp (op, "author") == 0) {
         char author[70] ;
         cur_book.getAuthor (author) ;
         if (strlen (author)) {
-            authors.erase (data (author, cur_st.second.second)) ;
+            authors.erase (data (author, cur_st.second)) ;
         }
         strcpy (author, content.substr (1, content.length() - 2).c_str()) ;
         cur_book.modify_author (author) ;
-        authors.insert (data (author, cur_st.second.second)) ;
+        authors.insert (data (author, cur_st.second)) ;
 
     } else if (strcmp (op, "keyword") == 0) {
         int cnt = cur_book.getKeywordCount() ;
         char keyword[70], tmp[70] ;
         for (int i = 0; i < cnt; i ++) {
             cur_book.getKeyword (i, tmp) ;
-            keywords.erase (data (tmp, cur_st.second.second)) ;
+            keywords.erase (data (tmp, cur_st.second)) ;
         }
         cur_book.clear_keyword() ;
 
@@ -270,7 +277,7 @@ void modify (const char *op_str) {
                 tmp[cur_word] = keyword[cur] ;
             tmp[cur_word ++] = '\0' ;
             cur_book.add_keyword (tmp) ;
-            keywords.insert (data (tmp, cur_st.second.second)) ;
+            keywords.insert (data (tmp, cur_st.second)) ;
             if (!keyword[cur ++]) break ;
         }
     } else if (strcmp (op, "price") == 0) {
@@ -280,20 +287,19 @@ void modify (const char *op_str) {
         throw "wrong format" ;
     }
 
-    book_write (cur_st.second.second, cur_book) ;
-    cur_status.top() = cur_st ;
+    book_write (cur_st.second, cur_book) ;
 }
 
 void add_finance_log (double p) ;
 void import_book (int quantity, double cost_price) {
     if (cur_st.first.getPrivilege() < 3) throw "no enough privilege" ;
-    book &cur_book = cur_st.second.first ;
+    book cur_book = book_read (cur_st.second) ;
     if (cur_book.empty()) throw "book not selected" ;
     cur_book.import (quantity) ;
-    book_write (cur_st.second.second, cur_book) ;
+    book_write (cur_st.second, cur_book) ;
     
     add_finance_log (-cost_price) ;
-    cur_status.top() = cur_st ;
+    //cur_status.top() = cur_st ;
 }
 
 void show (const char *op_str) {
@@ -394,10 +400,10 @@ void buy (const char *ISBN, int quantity) {
 }
 
 void runCommands () {
-    //int cnt = 0 ;
+    //int line_cnt = 0 ;
     string op_string, tmp_op_string ;
     while (getline (cin, op_string)) {
-        //cout << "line " << ++ cnt << " " << op_string << endl ;
+        //cout << "line " << ++ line_cnt << " " << op_string << endl ;
         tmp_op_string = op_string ;
         stringstream ss (op_string) ;
         char tmp[110][110]; int cnt = 0 ;
@@ -478,6 +484,15 @@ void runCommands () {
         } catch (...) {
             printf("Invalid\n") ;
         }
+        
+        /*if (line_cnt >= 367) {
+            printf("show -ISBN=978-0-7836-5800-1:") ;
+            try {
+                show ("-ISBN=978-0-7836-5800-1") ;
+            } catch (...) {
+                printf("Invalid\n") ;
+            }
+        }*/
     }
 }
 
@@ -489,4 +504,4 @@ int main() {
 
 
 //complex test output line 159 161 172 182-183...
-//1.out command no.409
+//1.out command no.409 line 568

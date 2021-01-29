@@ -11,6 +11,8 @@ using namespace std;
 
 const int size = 4 ;
 
+fstream io ;
+
 class BPlusTree {
 private:
     
@@ -40,17 +42,17 @@ private:
 public:
     BPlusTree (const char *file) {
         strcpy (file_name, file) ;
-        fstream in (file, ios::in | ios::binary) ;
-        if (!in.is_open()) {
-            fstream out (file, ios::out | ios::binary) ;
-            out.write (reinterpret_cast<char *>(&root), sizeof root) ;
-            out.write (reinterpret_cast<char *>(&node_cnt), sizeof node_cnt) ;
-            out.close() ;
+        io.open (file, ios::in | ios::binary) ;
+        if (!io.is_open()) {
+            io.open (file, ios::out | ios::binary) ;
+            io.write (reinterpret_cast<char *>(&root), sizeof root) ;
+            io.write (reinterpret_cast<char *>(&node_cnt), sizeof node_cnt) ;
+            io.close() ;
         } else {
-            in.read (reinterpret_cast<char *>(&root), sizeof root) ;
-            in.read (reinterpret_cast<char *>(&node_cnt), sizeof node_cnt) ;
+            io.read (reinterpret_cast<char *>(&root), sizeof root) ;
+            io.read (reinterpret_cast<char *>(&node_cnt), sizeof node_cnt) ;
         }
-        in.close() ;
+        io.close() ;
     }
 
     void print (int v) {
@@ -73,29 +75,30 @@ public:
     }
 
     node disk_read (int pos) {
-        fstream in ;
-        in.open (file_name, ios::in | ios::binary) ;
-        in.seekg (pos + offset, ios::beg) ;
+        if (io.is_open()) io.close() ;
+        io.open (file_name, ios::in | ios::binary) ;
+        io.seekg (pos + offset, ios::beg) ;
         node cur ;
-        in.read (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
-        in.close() ;
+        io.read (reinterpret_cast<char *>(&cur), sizeof (cur)) ;
+        io.close() ;
         return cur ;
     }
 
     void disk_write (int pos, node &x) {
-        fstream out ;
-        out.open (file_name, ios::in | ios::out | ios::binary) ;
-        out.seekp (pos + offset, ios::beg) ;
-        out.write (reinterpret_cast<char *>(&x), sizeof (x)) ;
-        out.close() ;
+        if (io.is_open()) io.close() ;
+        io.open (file_name, ios::in | ios::out | ios::binary) ;
+        io.seekp (pos + offset, ios::beg) ;
+        io.write (reinterpret_cast<char *>(&x), sizeof (x)) ;
+        io.close() ;
     }
 
     void update_root () {
-        fstream out (file_name, ios::in | ios::out | ios::binary) ;
-        out.seekp (0, ios::beg) ;
-        out.write (reinterpret_cast<char *>(&root), sizeof root) ;
-        out.write (reinterpret_cast<char *>(&node_cnt), sizeof node_cnt) ;
-        out.close() ;
+        if (io.is_open()) io.close() ;
+        io.open (file_name, ios::in | ios::out | ios::binary) ;
+        io.seekp (0, ios::beg) ;
+        io.write (reinterpret_cast<char *>(&root), sizeof root) ;
+        io.write (reinterpret_cast<char *>(&node_cnt), sizeof node_cnt) ;
+        io.close() ;
     }
 
     pair<int, int> find (int v, const data &x) { //find node == x
