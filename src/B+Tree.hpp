@@ -10,7 +10,7 @@
 
 using namespace std;
 
-const int size = 20 ;
+const int size = 30 ;
 
 class BPlusTree {
 private:
@@ -137,7 +137,6 @@ public:
         }
     }
 
-    
     pair<int, int> find (const data &x) {
         return find (root, x) ;
     }
@@ -391,7 +390,6 @@ public:
                 disk_write (rbro, rbro_node); disk_write (cur.par, par_node) ;
             } else {
                 if (lbro != -1) { //merge with left brother
-                    //printf("merge with left brother %d\n", lbro) ;
                     for (int i = 0; i < cur.keyCnt; i ++)
                         lbro_node.key[lbro_node.keyCnt ++] = cur.key[i] ;
 
@@ -422,7 +420,7 @@ public:
                             par_node.key[i - 1] = par_node.key[i] ;
                     }
                     par_node.keyCnt -- ;
-                    
+
                     if (par_node.keyCnt == 0 && par == root) {
                         root = pos.first; cur.par = -1 ;
                         disk_write (pos.first, cur); 
