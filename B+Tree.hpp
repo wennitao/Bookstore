@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstdio>
 #include <fstream>
+#include <algorithm>
 
 #include "data.hpp"
 

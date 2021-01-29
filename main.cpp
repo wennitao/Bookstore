@@ -4,6 +4,8 @@
 #include <vector>
 #include <stack>
 #include <sstream>
+#include <algorithm>
+#include <cmath>
 
 #include "data.hpp"
 #include "user.hpp"
