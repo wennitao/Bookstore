@@ -108,14 +108,6 @@ void login (const char *user_id, const char *passwd) {
 
 void logout () {
     if (cur_st.first.getPrivilege () < 1) throw "Can not logout" ;
-    /*while (1) {
-        cur_status.pop(); cur_st = cur_status.top() ;
-        vector<int> pos; char user_id[70] ;
-        cur_st.first.getUserid (user_id) ;
-        cout << user_id << endl ;
-        users.find (data (user_id, 0), pos) ;
-        if (!pos.empty()) break ;
-    }*/
     cur_status.pop(); cur_st = cur_status.top() ;
 }
 
@@ -227,11 +219,10 @@ void modify (const char *op_str) {
     for (i ++; i < len; i ++) content += op_str[i] ;
 
     if (strcmp (op, "ISBN") == 0) {
-        char ISBN[30] ;
+        char ISBN[30] = {0} ;
         strcpy (ISBN, content.c_str()) ;
         vector<int> pos ;
         books.find (data (ISBN, 0), pos) ;
-        //if (!pos.empty() && pos[0] != cur_st.second) throw "ISBN already exists" ;
         if (!pos.empty()) throw "ISBN already exists" ;
         
         cur_book.getISBN (ISBN) ;
@@ -241,7 +232,7 @@ void modify (const char *op_str) {
         books.insert (data (ISBN, cur_st.second)) ;
 
     } else if (strcmp (op, "name") == 0) {
-        char name[70] ;
+        char name[70] = {0} ;
         cur_book.getName (name) ;
         if (strlen (name)) {
             names.erase (data (name, cur_st.second)) ;
@@ -251,7 +242,7 @@ void modify (const char *op_str) {
         names.insert (data (name, cur_st.second)) ;
 
     } else if (strcmp (op, "author") == 0) {
-        char author[70] ;
+        char author[70] = {0} ;
         cur_book.getAuthor (author) ;
         if (strlen (author)) {
             authors.erase (data (author, cur_st.second)) ;
@@ -262,7 +253,7 @@ void modify (const char *op_str) {
 
     } else if (strcmp (op, "keyword") == 0) {
         int cur = 0, cnt = 0 ;
-        char s[70][70], keyword[70], tmp[70] ;
+        char s[70][70] = {0}, keyword[70] = {0}, tmp[70] = {0} ;
         strcpy (keyword, content.substr (1, content.length() - 2).c_str()) ;
         while (1) {
             int cur_word = 0 ;
@@ -322,19 +313,19 @@ void show (const char *op_str) {
         for (i ++; i < len; i ++) content += op_str[i] ;
 
         if (strcmp (op, "ISBN") == 0) {
-            char ISBN[70] ;
+            char ISBN[70] = {0} ;
             strcpy (ISBN, content.c_str()) ;
             books.find (data (ISBN, 0), pos) ;
         } else if (strcmp (op, "name") == 0) {
-            char name[70] ;
+            char name[70] = {0} ;
             strcpy (name, content.substr (1, content.length() - 2).c_str()) ;
             names.find (data (name, 0), pos) ;
         } else if (strcmp (op, "author") == 0) {
-            char author[70] ;
+            char author[70] = {0} ;
             strcpy (author, content.substr (1, content.length() - 2).c_str()) ;
             authors.find (data (author, 0), pos) ;
         } else if (strcmp (op, "keyword") == 0) {
-            char keyword[70] ;
+            char keyword[70] = {0} ;
             strcpy (keyword, content.substr (1, content.length() - 2).c_str()) ;
             keywords.find (data (keyword, 0), pos) ;
         } else {
@@ -406,10 +397,8 @@ void close_files() {
 }
 
 void runCommands () {
-    int line_cnt = 0 ;
     string op_string, tmp_op_string ;
     while (getline (cin, op_string)) {
-        //cout << "line " << ++ line_cnt << " " << op_string << endl ;
         tmp_op_string = op_string ;
         stringstream ss (op_string) ;
         char tmp[110][110]; int cnt = 0 ;
@@ -501,7 +490,3 @@ int main() {
     runCommands () ;
     return 0 ;
 }
-
-
-//complex test output line 159 161 172 182-183...
-//1.out command no.409 line 568

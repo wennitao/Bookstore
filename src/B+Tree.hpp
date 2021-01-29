@@ -99,7 +99,6 @@ public:
     }
 
     pair<int, int> find (int v, const data &x) { //find node == x
-        //printf("v:%d\n", v) ;
         if  (v == -1) return make_pair (-1, -1) ;
         node cur = disk_read (v) ;
         int pos = 0 ;

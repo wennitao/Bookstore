@@ -11,24 +11,23 @@ using namespace std;
 class book {
     friend ostream& operator << (ostream &out, const book &obj) ;
 private:
-    char ISBN[25], name[65], author[65], keyword[70][70] ;
-    int keyword_cnt, quantity ;
-    double price ;
+    char ISBN[25] = {0}, name[65] = {0}, author[65] = {0}, keyword[70][70] = {0};
+    int keyword_cnt = 0, quantity = 0 ;
+    double price = 0 ;
 
 public:
     book () {
-        memset (ISBN, 0, sizeof ISBN) ;
+        /*memset (ISBN, 0, sizeof ISBN) ;
         memset (name, 0, sizeof name) ;
         memset (author, 0, sizeof author) ;
         memset (keyword, 0, sizeof keyword) ;
-        keyword_cnt = quantity = price = 0 ;
+        keyword_cnt = quantity = price = 0 ;*/
     }
     book (const char *_ISBN) {
-        memset (ISBN, 0, sizeof ISBN) ;
-        memset (name, 0, sizeof name) ;
+        /*memset (name, 0, sizeof name) ;
         memset (author, 0, sizeof author) ;
         memset (keyword, 0, sizeof keyword) ;
-        keyword_cnt = quantity = price = 0 ;
+        keyword_cnt = quantity = price = 0 ;*/
         strcpy (ISBN, _ISBN) ;
     }
 
