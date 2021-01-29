@@ -486,7 +486,7 @@ void runCommands () {
 }
 
 int main() {
-    ios::sync_with_stdio (false) ;
+    //ios::sync_with_stdio (false) ;
     init () ;
     runCommands () ;
     return 0 ;
